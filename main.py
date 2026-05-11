@@ -4,6 +4,7 @@ import hmac
 import base64
 from contextlib import asynccontextmanager
 
+import asyncio
 from fastapi import FastAPI, Request, HTTPException
 from dotenv import load_dotenv
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -60,6 +61,32 @@ async def send_evening_checkin():
     await send_line_message("今天的事情都完成了嗎？有需要改期的嗎？")
 
 
+async def process_event(event: dict):
+    msg = event["message"]
+    reply_token = event["replyToken"]
+    token = os.environ["LINE_CHANNEL_ACCESS_TOKEN"]
+
+    if msg["type"] == "text":
+        user_text = msg["text"]
+    elif msg["type"] == "audio":
+        audio_url = f"https://api-data.line.me/v2/bot/message/{msg['id']}/content"
+        user_text = transcribe_audio(audio_url, token)
+    else:
+        return
+
+    reply_text = ask_claude(user_text)
+
+    async with httpx.AsyncClient() as client:
+        await client.post(
+            "https://api.line.me/v2/bot/message/reply",
+            headers={"Authorization": f"Bearer {token}"},
+            json={
+                "replyToken": reply_token,
+                "messages": [{"type": "text", "text": reply_text}],
+            },
+        )
+
+
 @app.post("/webhook")
 async def webhook(request: Request):
     body = await request.body()
@@ -72,34 +99,8 @@ async def webhook(request: Request):
     payload = json.loads(body)
 
     for event in payload.get("events", []):
-        if event.get("type") != "message":
-            continue
-
-        msg = event["message"]
-        reply_token = event["replyToken"]
-        token = os.environ["LINE_CHANNEL_ACCESS_TOKEN"]
-
-        if msg["type"] == "text":
-            user_text = msg["text"]
-
-        elif msg["type"] == "audio":
-            audio_url = f"https://api-data.line.me/v2/bot/message/{msg['id']}/content"
-            user_text = transcribe_audio(audio_url, token)
-
-        else:
-            continue
-
-        reply_text = ask_claude(user_text)
-
-        async with httpx.AsyncClient() as client:
-            await client.post(
-                "https://api.line.me/v2/bot/message/reply",
-                headers={"Authorization": f"Bearer {token}"},
-                json={
-                    "replyToken": reply_token,
-                    "messages": [{"type": "text", "text": reply_text}],
-                },
-            )
+        if event.get("type") == "message":
+            asyncio.create_task(process_event(event))
 
     return {"status": "ok"}
 
