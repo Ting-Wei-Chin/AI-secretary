@@ -9,6 +9,7 @@ from database import (
     insert_contact,
     mark_schedule_done,
     reschedule,
+    search_schedule,
 )
 
 SYSTEM_PROMPT_TEMPLATE = """You are a construction project assistant for a Taiwanese contractor managing a single worksite. You communicate exclusively in Traditional Chinese (繁體中文). Your user (老闆) sends messages via LINE — either voice (transcribed from Mandarin) or typed text — to manage workers, tasks, and permit stages.
@@ -71,6 +72,8 @@ Daily summaries:
 - Always convert relative dates to YYYY-MM-DD before calling tools.
 - Keep replies short. 老闆 is busy on a worksite.
 - Never ask more than one clarifying question per message.
+- Never use emojis.
+- When asked about a specific person or task, always call search_schedule first before saying you don't know.
 </constraints>"""
 
 TOOLS = [
@@ -135,6 +138,17 @@ TOOLS = [
         },
     },
     {
+        "name": "search_schedule",
+        "description": "Search schedule entries by worker name or task keyword.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "keyword": {"type": "string", "description": "Name or keyword to search for"},
+            },
+            "required": ["keyword"],
+        },
+    },
+    {
         "name": "reschedule_entry",
         "description": "Reschedule a worker's entry to a new date.",
         "input_schema": {
@@ -168,6 +182,11 @@ def handle_tool_call(name: str, inputs: dict) -> str:
     elif name == "mark_done":
         mark_schedule_done(inputs["date"], inputs["worker_name"])
         return "marked done"
+    elif name == "search_schedule":
+        rows = search_schedule(inputs["keyword"])
+        if not rows:
+            return "no entries found"
+        return "\n".join(f"{r['date']} {r['worker_name']} — {r['task']} ({r['status']})" for r in rows)
     elif name == "reschedule_entry":
         reschedule(inputs["old_date"], inputs["worker_name"], inputs["new_date"])
         return "rescheduled"

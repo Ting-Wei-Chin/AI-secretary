@@ -56,3 +56,21 @@ def mark_schedule_done(date_str: str, worker_name: str):
 
 def reschedule(old_date: str, worker_name: str, new_date: str):
     get_db().table("schedules").update({"date": new_date, "status": "pending"}).eq("date", old_date).eq("worker_name", worker_name).execute()
+
+
+def search_schedule(keyword: str) -> list[dict]:
+    return (
+        get_db()
+        .table("schedules")
+        .select("*")
+        .ilike("worker_name", f"%{keyword}%")
+        .execute()
+        .data
+    ) or (
+        get_db()
+        .table("schedules")
+        .select("*")
+        .ilike("task", f"%{keyword}%")
+        .execute()
+        .data
+    )
