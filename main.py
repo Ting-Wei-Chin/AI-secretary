@@ -100,6 +100,8 @@ async def webhook(request: Request):
 
     for event in payload.get("events", []):
         if event.get("type") == "message":
+            user_id = event.get("source", {}).get("userId", "unknown")
+            print(f"LINE USER ID: {user_id}", flush=True)
             asyncio.create_task(process_event(event))
 
     return {"status": "ok"}
