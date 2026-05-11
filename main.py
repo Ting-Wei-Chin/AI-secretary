@@ -39,17 +39,18 @@ def verify_line_signature(body: bytes, signature: str) -> bool:
 
 
 async def send_line_message(text: str):
-    user_id = os.environ["LINE_USER_ID"]
+    user_ids = os.environ["LINE_USER_ID"].split(",")
     token = os.environ["LINE_CHANNEL_ACCESS_TOKEN"]
     async with httpx.AsyncClient() as client:
-        await client.post(
-            "https://api.line.me/v2/bot/message/push",
-            headers={"Authorization": f"Bearer {token}"},
-            json={
-                "to": user_id,
-                "messages": [{"type": "text", "text": text}],
-            },
-        )
+        for user_id in user_ids:
+            await client.post(
+                "https://api.line.me/v2/bot/message/push",
+                headers={"Authorization": f"Bearer {token}"},
+                json={
+                    "to": user_id.strip(),
+                    "messages": [{"type": "text", "text": text}],
+                },
+            )
 
 
 async def send_morning_summary():
