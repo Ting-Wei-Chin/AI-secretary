@@ -20,7 +20,7 @@ scheduler = AsyncIOScheduler()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    scheduler.add_job(send_morning_summary, CronTrigger(hour=8, minute=0, timezone="Asia/Taipei"))
+    scheduler.add_job(send_morning_summary, CronTrigger(hour=10, minute=0, timezone="Asia/Taipei"))
     scheduler.add_job(send_evening_checkin, CronTrigger(hour=17, minute=0, timezone="Asia/Taipei"))
     scheduler.start()
     yield
@@ -52,7 +52,7 @@ async def send_line_message(text: str):
 
 
 async def send_morning_summary():
-    reply = ask_claude("【系統觸發】請傳送今天和明天的行程摘要。")
+    reply = ask_claude("【系統觸發】請傳送明天的行程摘要。")
     await send_line_message(reply)
 
 
