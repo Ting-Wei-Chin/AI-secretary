@@ -12,6 +12,7 @@ from database import (
     search_schedule,
     delete_schedule,
     update_schedule,
+    fetch_groups,
 )
 
 SYSTEM_PROMPT_TEMPLATE = """You are a construction project assistant for a Taiwanese contractor managing a single worksite. You communicate exclusively in Traditional Chinese (繁體中文). Your user (老闆) sends messages via LINE — either voice (transcribed from Mandarin) or typed text — to manage workers, tasks, and permit stages.
@@ -142,6 +143,18 @@ TOOLS = [
         },
     },
     {
+        "name": "send_to_group",
+        "description": "Send a message to a LINE group by group name.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "group_name": {"type": "string", "description": "Name of the group, e.g. 工班群"},
+                "message": {"type": "string", "description": "Message to send to the group"},
+            },
+            "required": ["group_name", "message"],
+        },
+    },
+    {
         "name": "delete_schedule",
         "description": "Delete a schedule entry from the database.",
         "input_schema": {
@@ -211,6 +224,21 @@ def handle_tool_call(name: str, inputs: dict) -> str:
     elif name == "mark_done":
         mark_schedule_done(inputs["date"], inputs["worker_name"])
         return "marked done"
+    elif name == "send_to_group":
+        groups = fetch_groups()
+        target = next((g for g in groups if g["name"] == inputs["group_name"]), None)
+        if not target:
+            return f"group '{inputs['group_name']}' not found in database"
+        import asyncio, httpx, os
+        async def _push():
+            async with httpx.AsyncClient() as client:
+                await client.post(
+                    "https://api.line.me/v2/bot/message/push",
+                    headers={"Authorization": f"Bearer {os.environ['LINE_CHANNEL_ACCESS_TOKEN']}"},
+                    json={"to": target["group_id"], "messages": [{"type": "text", "text": inputs["message"]}]},
+                )
+        asyncio.get_event_loop().run_until_complete(_push())
+        return "sent"
     elif name == "delete_schedule":
         delete_schedule(inputs["date"], inputs["worker_name"])
         return "deleted"
