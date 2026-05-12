@@ -140,6 +140,8 @@ Claude uses **tool use** to interact with the database. Instead of just generati
 | `search_schedule` | Search schedules by worker name or task keyword |
 | `mark_done` | Mark a schedule entry as completed |
 | `reschedule_entry` | Move a schedule entry to a new date |
+| `delete_schedule` | Delete a schedule entry |
+| `update_schedule` | Update the task description of an existing schedule entry |
 
 ---
 
@@ -179,6 +181,20 @@ Your scheduled jobs: every day at 10:00 AM you push tomorrow's schedule; at 5:00
 ```
 
 ---
+
+## Modifying a Schedule Entry
+
+Tell the bot:
+> 把5/18油漆師父的任務改成粉刷二樓
+
+Claude will call `update_schedule` with the date, worker name, and new task description.
+
+## Deleting a Schedule Entry
+
+Tell the bot:
+> 刪除5/18油漆師父的行程
+
+Claude will call `delete_schedule` to remove the entry.
 
 ## Adding a New Contact
 
