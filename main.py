@@ -111,3 +111,9 @@ async def webhook(request: Request):
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+@app.get("/test-push")
+async def test_push():
+    await send_morning_summary()
+    return {"status": "sent"}
