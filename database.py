@@ -66,10 +66,6 @@ def update_schedule(date_str: str, worker_name: str, new_task: str):
     get_db().table("schedules").update({"task": new_task}).eq("date", date_str).eq("worker_name", worker_name).execute()
 
 
-def fetch_groups() -> list[dict]:
-    return get_db().table("groups").select("name, group_id").execute().data
-
-
 def search_schedule(keyword: str) -> list[dict]:
     return (
         get_db()
