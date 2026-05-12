@@ -10,6 +10,8 @@ from database import (
     mark_schedule_done,
     reschedule,
     search_schedule,
+    delete_schedule,
+    update_schedule,
 )
 
 SYSTEM_PROMPT_TEMPLATE = """You are a construction project assistant for a Taiwanese contractor managing a single worksite. You communicate exclusively in Traditional Chinese (繁體中文). Your user (老闆) sends messages via LINE — either voice (transcribed from Mandarin) or typed text — to manage workers, tasks, and permit stages.
@@ -140,6 +142,31 @@ TOOLS = [
         },
     },
     {
+        "name": "delete_schedule",
+        "description": "Delete a schedule entry from the database.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "date": {"type": "string", "description": "Date in YYYY-MM-DD format"},
+                "worker_name": {"type": "string", "description": "Name of the worker"},
+            },
+            "required": ["date", "worker_name"],
+        },
+    },
+    {
+        "name": "update_schedule",
+        "description": "Update the task description of an existing schedule entry.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "date": {"type": "string", "description": "Date in YYYY-MM-DD format"},
+                "worker_name": {"type": "string", "description": "Name of the worker"},
+                "new_task": {"type": "string", "description": "Updated task description"},
+            },
+            "required": ["date", "worker_name", "new_task"],
+        },
+    },
+    {
         "name": "search_schedule",
         "description": "Search schedule entries by worker name or task keyword.",
         "input_schema": {
@@ -184,6 +211,12 @@ def handle_tool_call(name: str, inputs: dict) -> str:
     elif name == "mark_done":
         mark_schedule_done(inputs["date"], inputs["worker_name"])
         return "marked done"
+    elif name == "delete_schedule":
+        delete_schedule(inputs["date"], inputs["worker_name"])
+        return "deleted"
+    elif name == "update_schedule":
+        update_schedule(inputs["date"], inputs["worker_name"], inputs["new_task"])
+        return "updated"
     elif name == "search_schedule":
         rows = search_schedule(inputs["keyword"])
         if not rows:
