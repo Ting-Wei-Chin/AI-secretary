@@ -143,6 +143,8 @@ Claude uses **tool use** to interact with the database. Instead of just generati
 | `delete_schedule` | Delete a schedule entry |
 | `update_schedule` | Update the task description of an existing schedule entry |
 
+> Group messaging was considered but removed — LINE requires the bot to be a group member and a paid plan for push messages to groups.
+
 ---
 
 ## Webhook Flow
