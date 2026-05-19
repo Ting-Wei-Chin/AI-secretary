@@ -17,8 +17,12 @@ create table tasks (
   description text not null,
   assigned_to text,
   status text not null default 'pending',  -- pending | done
+  remind_at timestamptz,                   -- null = no timed reminder
   created_at timestamptz default now()
 );
+
+-- Run this if the table already exists:
+-- ALTER TABLE tasks ADD COLUMN remind_at timestamptz;
 
 -- seed initial contact
 insert into contacts (name, role) values ('淂溱', '顧問');

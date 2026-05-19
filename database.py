@@ -1,4 +1,5 @@
 import os
+from datetime import datetime, timezone
 from supabase import create_client, Client
 
 _client: Client | None = None
@@ -44,6 +45,33 @@ def insert_task(description: str, assigned_to: str | None = None):
         "assigned_to": assigned_to,
         "status": "pending",
     }).execute()
+
+
+def insert_reminder(description: str, remind_at: str, assigned_to: str | None = None):
+    get_db().table("tasks").insert({
+        "description": description,
+        "assigned_to": assigned_to,
+        "status": "pending",
+        "remind_at": remind_at,
+    }).execute()
+
+
+def fetch_due_reminders() -> list[dict]:
+    now = datetime.now(timezone.utc).isoformat()
+    rows = (
+        get_db()
+        .table("tasks")
+        .select("*")
+        .eq("status", "pending")
+        .lte("remind_at", now)
+        .execute()
+        .data
+    )
+    return [r for r in rows if r.get("remind_at")]
+
+
+def mark_task_done(task_id: int):
+    get_db().table("tasks").update({"status": "done"}).eq("id", task_id).execute()
 
 
 def insert_contact(name: str, role: str):

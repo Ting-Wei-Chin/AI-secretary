@@ -6,6 +6,7 @@ from database import (
     fetch_schedule_for_date,
     insert_schedule,
     insert_task,
+    insert_reminder,
     insert_contact,
     mark_schedule_done,
     reschedule,
@@ -53,6 +54,11 @@ You have access to database tools. Always call the appropriate tool to save or r
 5. ACTION REQUESTS (e.g. "打電話給趙老闆")
    - Call save_task tool
    - Reply: "好，已記錄待辦：[action]"
+
+6. TIMED REMINDERS (e.g. "下午三點提醒我去買材料", "明天早上九點提醒我打電話")
+   - Convert the time to ISO 8601 format with Asia/Taipei offset (+08:00), e.g. "2026-05-19T15:00:00+08:00"
+   - Call save_reminder tool with the description and remind_at
+   - Reply: "好，[date/time] 會提醒你：[description]"
 
 6. NEW CONTACT
    - Call save_contact tool
@@ -190,6 +196,19 @@ TOOLS = [
             "required": ["old_date", "worker_name", "new_date"],
         },
     },
+    {
+        "name": "save_reminder",
+        "description": "Save a timed reminder that will push a LINE message at the specified time.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "description": {"type": "string", "description": "What to remind the user about"},
+                "remind_at": {"type": "string", "description": "ISO 8601 datetime with Asia/Taipei offset, e.g. 2026-05-19T15:00:00+08:00"},
+                "assigned_to": {"type": "string", "description": "Person to remind (optional)"},
+            },
+            "required": ["description", "remind_at"],
+        },
+    },
 ]
 
 
@@ -225,6 +244,9 @@ def handle_tool_call(name: str, inputs: dict) -> str:
     elif name == "reschedule_entry":
         reschedule(inputs["old_date"], inputs["worker_name"], inputs["new_date"])
         return "rescheduled"
+    elif name == "save_reminder":
+        insert_reminder(inputs["description"], inputs["remind_at"], inputs.get("assigned_to"))
+        return "saved"
     return "unknown tool"
 
 

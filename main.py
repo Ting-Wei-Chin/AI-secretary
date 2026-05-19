@@ -13,6 +13,7 @@ import httpx
 
 from claude_client import ask_claude
 from whisper_client import transcribe_audio
+from database import fetch_due_reminders, mark_task_done
 
 load_dotenv()
 
@@ -23,6 +24,7 @@ scheduler = AsyncIOScheduler()
 async def lifespan(app: FastAPI):
     scheduler.add_job(send_morning_summary, CronTrigger(hour=10, minute=0, timezone="Asia/Taipei"))
     scheduler.add_job(send_evening_checkin, CronTrigger(hour=17, minute=0, timezone="Asia/Taipei"))
+    scheduler.add_job(check_reminders, CronTrigger(minute="*", timezone="Asia/Taipei"))
     scheduler.start()
     yield
     scheduler.shutdown()
@@ -51,6 +53,13 @@ async def send_line_message(text: str):
                     "messages": [{"type": "text", "text": text}],
                 },
             )
+
+
+async def check_reminders():
+    due = fetch_due_reminders()
+    for task in due:
+        await send_line_message(f"提醒：{task['description']}")
+        mark_task_done(task["id"])
 
 
 async def send_morning_summary():
