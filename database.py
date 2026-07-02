@@ -30,13 +30,20 @@ def fetch_schedule_for_date(date_str: str) -> list[dict]:
     )
 
 
-def insert_schedule(date_str: str, worker_name: str, task: str):
+def insert_schedule(date_str: str, worker_name: str, task: str, headcount: int = 1):
     get_db().table("schedules").insert({
         "date": date_str,
         "worker_name": worker_name,
         "task": task,
         "status": "pending",
+        "headcount": headcount,
     }).execute()
+
+
+def fetch_daily_headcount(date_str: str) -> dict:
+    rows = get_db().table("schedules").select("worker_name, task, headcount, status").eq("date", date_str).execute().data
+    total = sum(r["headcount"] for r in rows)
+    return {"total": total, "entries": rows}
 
 
 def insert_task(description: str, assigned_to: str | None = None):

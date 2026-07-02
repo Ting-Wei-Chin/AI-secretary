@@ -9,7 +9,8 @@ create table schedules (
   date date not null,
   worker_name text not null,
   task text not null,
-  status text not null default 'pending'  -- pending | done | rescheduled
+  status text not null default 'pending',  -- pending | done | rescheduled
+  headcount integer not null default 1     -- number of workers for this entry
 );
 
 create table tasks (
@@ -23,6 +24,7 @@ create table tasks (
 
 -- Run this if the table already exists:
 -- ALTER TABLE tasks ADD COLUMN remind_at timestamptz;
+-- ALTER TABLE schedules ADD COLUMN headcount integer not null default 1;
 
 -- seed initial contact
 insert into contacts (name, role) values ('淂溱', '顧問');

@@ -4,6 +4,7 @@ import anthropic
 from database import (
     fetch_worker_roster,
     fetch_schedule_for_date,
+    fetch_daily_headcount,
     insert_schedule,
     insert_task,
     insert_reminder,
@@ -36,11 +37,16 @@ You have access to database tools. Always call the appropriate tool to save or r
 1. NEW INFORMATION (schedule, task, permit update)
    - Convert relative dates to actual calendar dates (YYYY-MM-DD)
    - Call save_schedule or save_task tool to store it
-   - Reply: "好，已記錄：[one-line summary with actual date]"
+   - If the message mentions a number of workers (e.g., "5個水電工"), set headcount to that number
+   - Reply: "好，已記錄：[one-line summary with actual date and headcount if given]"
 
 2. SCHEDULE QUERY (e.g. "下週一有什麼？")
    - Call get_schedule tool for the relevant date(s)
    - Reply in day-by-day format
+
+2b. HEADCOUNT QUERY (e.g. "今天幾個人？", "今天有多少工人？", "幾個人來工地？")
+   - Call get_daily_headcount tool for the relevant date
+   - Reply with per-job breakdown and total
 
 3. 8AM DAILY SUMMARY (triggered automatically)
    - Call get_schedule for today and tomorrow
@@ -71,10 +77,12 @@ Confirmations: one or two sentences, no lists.
 
 Daily summaries:
 【今日行程｜[月/日]】
-・[人員] — [任務]
+・[人員] — [任務]（[人數]人）
+合計：[總人數]人
 
 【明日行程｜[月/日]】
-・[人員] — [任務]
+・[人員] — [任務]（[人數]人）
+合計：[總人數]人
 </output_format>
 
 <constraints>
@@ -96,6 +104,7 @@ TOOLS = [
                 "date": {"type": "string", "description": "Date in YYYY-MM-DD format"},
                 "worker_name": {"type": "string", "description": "Name of the worker"},
                 "task": {"type": "string", "description": "Description of the task"},
+                "headcount": {"type": "integer", "description": "Number of workers for this job (default 1)"},
             },
             "required": ["date", "worker_name", "task"],
         },
@@ -197,6 +206,17 @@ TOOLS = [
         },
     },
     {
+        "name": "get_daily_headcount",
+        "description": "Get the total number of workers on site for a given date, broken down by job.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "date": {"type": "string", "description": "Date in YYYY-MM-DD format"},
+            },
+            "required": ["date"],
+        },
+    },
+    {
         "name": "save_reminder",
         "description": "Save a timed reminder that will push a LINE message at the specified time.",
         "input_schema": {
@@ -214,7 +234,7 @@ TOOLS = [
 
 def handle_tool_call(name: str, inputs: dict) -> str:
     if name == "save_schedule":
-        insert_schedule(inputs["date"], inputs["worker_name"], inputs["task"])
+        insert_schedule(inputs["date"], inputs["worker_name"], inputs["task"], inputs.get("headcount", 1))
         return "saved"
     elif name == "save_task":
         insert_task(inputs["description"], inputs.get("assigned_to"))
@@ -226,7 +246,7 @@ def handle_tool_call(name: str, inputs: dict) -> str:
         rows = fetch_schedule_for_date(inputs["date"])
         if not rows:
             return "no entries"
-        return "\n".join(f"{r['worker_name']} — {r['task']} ({r['status']})" for r in rows)
+        return "\n".join(f"{r['worker_name']} — {r['task']} x{r.get('headcount', 1)}人 ({r['status']})" for r in rows)
     elif name == "mark_done":
         mark_schedule_done(inputs["date"], inputs["worker_name"])
         return "marked done"
@@ -241,6 +261,13 @@ def handle_tool_call(name: str, inputs: dict) -> str:
         if not rows:
             return "no entries found"
         return "\n".join(f"{r['date']} {r['worker_name']} — {r['task']} ({r['status']})" for r in rows)
+    elif name == "get_daily_headcount":
+        data = fetch_daily_headcount(inputs["date"])
+        if not data["entries"]:
+            return "no entries"
+        lines = [f"{r['worker_name']} — {r['task']} x{r['headcount']}人 ({r['status']})" for r in data["entries"]]
+        lines.append(f"合計：{data['total']}人")
+        return "\n".join(lines)
     elif name == "reschedule_entry":
         reschedule(inputs["old_date"], inputs["worker_name"], inputs["new_date"])
         return "rescheduled"
